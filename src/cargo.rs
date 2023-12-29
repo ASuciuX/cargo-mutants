@@ -10,7 +10,7 @@ use camino::Utf8Path;
 use itertools::Itertools;
 use tracing::{debug, debug_span};
 
-use crate::outcome::PhaseResult;
+use crate::outcome::{PhaseResult, TestType};
 use crate::package::Package;
 use crate::process::Process;
 use crate::*;
@@ -64,6 +64,9 @@ fn cargo_argv(
     options: &Options,
 ) -> Vec<String> {
     let mut cargo_args = vec![cargo_bin(), phase.name().to_string()];
+    if phase == Phase::Test(TestType::Nextest) {
+        cargo_args.push("run".to_string());
+    }
     if phase == Phase::Check || phase == Phase::Build {
         cargo_args.push("--tests".to_string());
     }
@@ -81,7 +84,7 @@ fn cargo_argv(
         cargo_args.push("--workspace".to_string());
     }
     cargo_args.extend(options.additional_cargo_args.iter().cloned());
-    if phase == Phase::Test {
+    if phase == Phase::Test(TestType::Test) || phase == Phase::Test(TestType::Nextest) {
         cargo_args.extend(options.additional_cargo_test_args.iter().cloned());
     }
     cargo_args
@@ -144,7 +147,7 @@ mod test {
             ["build", "--tests", "--workspace"]
         );
         assert_eq!(
-            cargo_argv(build_dir, None, Phase::Test, &options)[1..],
+            cargo_argv(build_dir, None, Phase::Test(TestType::Test), &options)[1..],
             ["test", "--workspace"]
         );
     }
@@ -182,7 +185,12 @@ mod test {
             ]
         );
         assert_eq!(
-            cargo_argv(build_dir, Some(&[&package]), Phase::Test, &options)[1..],
+            cargo_argv(
+                build_dir,
+                Some(&[&package]),
+                Phase::Test(TestType::Test),
+                &options
+            )[1..],
             [
                 "test",
                 "--manifest-path",
@@ -212,7 +220,7 @@ mod test {
             ["build", "--tests", "--workspace", "--release"]
         );
         assert_eq!(
-            cargo_argv(build_dir, None, Phase::Test, &options)[1..],
+            cargo_argv(build_dir, None, Phase::Test(TestType::Test), &options)[1..],
             [
                 "test",
                 "--workspace",

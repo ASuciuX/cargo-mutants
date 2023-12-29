@@ -90,6 +90,9 @@ pub struct Options {
 
     /// Emit diffs showing just what changed.
     pub emit_diffs: bool,
+
+    /// Run cargo nextest
+    pub nextest: bool,
 }
 
 fn join_slices(a: &[String], b: &[String]) -> Vec<String> {
@@ -141,6 +144,7 @@ impl Options {
             colors: true, // TODO: An option for this and use CLICOLORS.
             emit_diffs: args.diff,
             minimum_test_timeout,
+            nextest: args.nextest,
         };
         options.error_values.iter().for_each(|e| {
             if e.starts_with("Err(") {

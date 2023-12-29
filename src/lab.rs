@@ -15,7 +15,7 @@ use tracing::{debug, debug_span, error, info, trace};
 
 use crate::cargo::run_cargo;
 use crate::console::Console;
-use crate::outcome::{LabOutcome, Phase, ScenarioOutcome};
+use crate::outcome::{LabOutcome, Phase, ScenarioOutcome, TestType};
 use crate::output::OutputDir;
 use crate::package::Package;
 use crate::*;
@@ -83,7 +83,9 @@ pub fn test_mutants(
     } else if let Some(baseline_test_duration) = baseline_outcome
         .phase_results()
         .iter()
-        .find(|r| r.phase == Phase::Test)
+        .find(|r| {
+            r.phase == Phase::Test(TestType::Test) || r.phase == Phase::Test(TestType::Nextest)
+        })
         .map(|r| r.duration)
     {
         let auto_timeout = max(
@@ -191,12 +193,15 @@ fn test_scenario(
     let phases: &[Phase] = if options.check_only {
         &[Phase::Check]
     } else {
-        &[Phase::Build, Phase::Test]
+        match options.nextest {
+            true => &[Phase::Build, Phase::Test(TestType::Nextest)],
+            false => &[Phase::Build, Phase::Test(TestType::Test)],
+        }
     };
     for &phase in phases {
         console.scenario_phase_started(scenario, phase);
         let timeout = match phase {
-            Phase::Test => test_timeout,
+            Phase::Test(_) => test_timeout,
             _ => Duration::MAX,
         };
         let phase_result = run_cargo(

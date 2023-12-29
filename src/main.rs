@@ -166,6 +166,10 @@ struct Args {
     #[arg(long)]
     manifest_path: Option<Utf8PathBuf>,
 
+    /// use cargo nextest instead of cargo test when running tests.
+    #[arg(long)]
+    nextest: bool,
+
     /// don't read .cargo/mutants.toml.
     #[arg(long)]
     no_config: bool,

@@ -34,6 +34,12 @@ use crate::*;
 pub enum Phase {
     Check,
     Build,
+    Test(TestType),
+}
+
+#[derive(Debug, PartialEq, Eq, Hash, Clone, Copy, Serialize)]
+pub enum TestType {
+    Nextest,
     Test,
 }
 
@@ -42,7 +48,8 @@ impl Phase {
         match self {
             Phase::Check => "check",
             Phase::Build => "build",
-            Phase::Test => "test",
+            Phase::Test(TestType::Test) => "test",
+            Phase::Test(TestType::Nextest) => "nextest",
         }
     }
 }
@@ -215,22 +222,26 @@ impl ScenarioOutcome {
     }
 
     pub fn check_or_build_failed(&self) -> bool {
-        self.phase_results
-            .iter()
-            .any(|pr| pr.phase != Phase::Test && pr.process_status == ProcessStatus::Failure)
+        self.phase_results.iter().any(|pr| {
+            pr.phase != Phase::Test(TestType::Test)
+                && pr.phase != Phase::Test(TestType::Nextest)
+                && pr.process_status == ProcessStatus::Failure
+        })
     }
 
     /// True if this outcome is a caught mutant: it's a mutant and the tests failed.
     pub fn mutant_caught(&self) -> bool {
         self.scenario.is_mutant()
-            && self.last_phase() == Phase::Test
+            && (self.last_phase() == Phase::Test(TestType::Test)
+                || self.last_phase() == Phase::Test(TestType::Nextest))
             && self.last_phase_result() == ProcessStatus::Failure
     }
 
     /// True if this outcome is a missed mutant: it's a mutant and the tests succeeded.
     pub fn mutant_missed(&self) -> bool {
         self.scenario.is_mutant()
-            && self.last_phase() == Phase::Test
+            && (self.last_phase() == Phase::Test(TestType::Test)
+                || self.last_phase() == Phase::Test(TestType::Nextest))
             && self.last_phase_result().success()
     }
 
